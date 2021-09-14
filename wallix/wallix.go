@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -19,7 +18,9 @@ type BasicAuth struct {
 }
 
 // Asbtracts any requests to Wallix bastion API.
-func DoRequest(client *http.Client, method string, uri string, params map[string]string, basicAuth *BasicAuth) (results []map[string]interface{}, headers http.Header, err error) {
+func DoRequest(
+	client *http.Client, method string, uri string, params map[string]string, basicAuth *BasicAuth,
+) (results []map[string]interface{}, headers http.Header, err error) {
 	req, err := http.NewRequestWithContext(context.Background(), method, uri, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot create request to Wallix bastion %s: %w", uri, err)
@@ -54,12 +55,8 @@ func DoRequest(client *http.Client, method string, uri string, params map[string
 		defer res.Body.Close()
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot read response body from Wallix bastion %s: %w", uri, err)
-	}
-
-	if err := json.Unmarshal(body, &results); err != nil {
+	decoder := json.NewDecoder(res.Body)
+	if err := decoder.Decode(&results); err != nil {
 		return nil, nil, err
 	}
 
@@ -111,7 +108,9 @@ func GetDevices(client *http.Client, url string) (devices []map[string]interface
 	return devices, err
 }
 
-func GetClosedSessions(client *http.Client, url string, sessionsClosedMinutes int) (sessionsClosed []map[string]interface{}, err error) {
+func GetClosedSessions(
+	client *http.Client, url string, sessionsClosedMinutes int,
+) (sessionsClosed []map[string]interface{}, err error) {
 	fromDate := time.Now().Add(
 		-time.Minute * time.Duration(sessionsClosedMinutes),
 	).Format(TimeFormat)
