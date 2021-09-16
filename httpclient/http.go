@@ -33,19 +33,15 @@ func (t *TransportWithBasicAuth) RoundTrip(req *http.Request) (*http.Response, e
 
 // Build returns a configured http.Client.
 func (h *HTTPConfig) Build() (client *http.Client, err error) {
-	roundTripper, err := func() (http.RoundTripper, error) {
+	roundTripper := func() http.RoundTripper {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 
 		transport.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: h.SkipVerify, //nolint:gosec
 		}
 
-		return transport, nil
+		return transport
 	}()
-
-	if err != nil {
-		return nil, err
-	}
 
 	if h.Username != "" {
 		roundTripper = &TransportWithBasicAuth{

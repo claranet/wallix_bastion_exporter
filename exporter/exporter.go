@@ -73,8 +73,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	httpConfig := httpclient.HTTPConfig{
 		SkipVerify: e.Config.SkipVerify,
 		Timeout:    e.Config.Timeout,
-		//Username:   e.Config.WallixUsername,
-		//Password:   e.Config.WallixPassword,
 		// TODO expose as config parameter?
 		Headers: map[string]string{
 			"User-Agent": "prometheus_exporter_" + namespace,
