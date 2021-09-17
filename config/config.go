@@ -13,6 +13,7 @@ const (
 	defaultTimeout = 10
 )
 
+// All configuration available for the user.
 type Config struct {
 	ListenAddress  string `mapstructure:"listen-address"`
 	TelemetryPath  string `mapstructure:"telemetry-path"`
@@ -23,6 +24,11 @@ type Config struct {
 	WallixPassword string `mapstructure:"wallix-password"`
 }
 
+// Entry point function to load the configuration with the following precedence order:
+// - flag
+// - env var
+// - config file
+// The config file is optional.
 func LoadConfig(path string) (config Config, err error) {
 	if err := SetFlags(); err != nil {
 		return config, err
@@ -34,6 +40,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.AddConfigPath(path)
 
 	if err := viper.ReadInConfig(); err != nil {
+		// Config file is optional, so ignore error if it does not exist
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok { //nolint:errorlint
 			return config, err
 		}
@@ -41,9 +48,12 @@ func LoadConfig(path string) (config Config, err error) {
 
 	// Set variables from environment
 	viper.AutomaticEnv()
+
+	// Required to bind flag with env var
 	replacer := strings.NewReplacer("-", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
+	// Check mandatory parameters
 	if !viper.IsSet("wallix-username") {
 		return config, fmt.Errorf("wallix-username is a mandatory input")
 	}
@@ -58,8 +68,8 @@ func LoadConfig(path string) (config Config, err error) {
 	return config, nil
 }
 
+// Set flags and default variables.
 func SetFlags() (err error) {
-	// Set flags and default variables
 	helpFlag := pflag.BoolP("help", "h", false, "help message")
 	pflag.String("listen-address", ":9191", "Address to listen on for web interface and telemetry")
 	pflag.String("telemetry-path", "/metrics", "Path under which to expose metrics")

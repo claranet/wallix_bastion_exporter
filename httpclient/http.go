@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// The configuration to build the HTTP client.
 type HTTPConfig struct {
 	Timeout       int
 	Username      string
@@ -65,27 +66,26 @@ func (h *HTTPConfig) Build() (client *http.Client, err error) {
 		Transport: roundTripper,
 	}
 
+	// Handle cookie authentication
 	if h.CookieManager {
 		cookieJar, err := cookiejar.New(nil)
 		if err != nil {
 			return nil, err
 		}
 
-		return &http.Client{
-			Timeout:   time.Second * time.Duration(h.Timeout),
-			Transport: roundTripper,
-			Jar:       cookieJar,
-		}, nil
+		client.Jar = cookieJar
 	}
 
 	return client, nil
 }
 
+// Inject new haders into each request.
 type addHeader struct {
 	headers map[string]string
 	rt      http.RoundTripper
 }
 
+// Allows to add header to each request done by this HTTP client.
 func (h *addHeader) RoundTrip(req *http.Request) (*http.Response, error) {
 	for k, v := range h.headers {
 		req.Header.Add(k, v)

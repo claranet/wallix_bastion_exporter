@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	// TODO expose as config parameter?
-	sessionsClosedMinutes = 5
-	namespace             = "wallix_bastion"
+	// ony used for metrics based on past timeframe like the closed sessions.
+	sessionsClosedMinutes = 5 // TODO expose as config parameter?
+	// prometheus exporter namespace.
+	namespace = "wallix_bastion"
 )
 
 var (
@@ -73,10 +74,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	httpConfig := httpclient.HTTPConfig{
 		SkipVerify: e.Config.SkipVerify,
 		Timeout:    e.Config.Timeout,
-		// TODO expose as config parameter?
 		Headers: map[string]string{
 			"User-Agent": "prometheus_exporter_" + namespace,
 		},
+		// Using a cookie speed up metrics fetch by avoiding basic auth on every requests
 		CookieManager: true,
 	}
 	client, err := httpConfig.Build()
@@ -101,6 +102,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// The first request done to wallix API. It allows to:
+// - determine "up" metric for the exporter
+// - prevent trying to fetch other metrics if down
+// - retrieve the cookie to not have to authenticate subsequent requests
+// Notice it uses "POST" methode in contrast to all other requests.
 func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *http.Client) (err error) {
 	_, _, err = wallix.DoRequest(
 		client,
@@ -127,6 +133,9 @@ func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *ht
 	return nil
 }
 
+// All other metrics fetched from the API essentially
+// by counting the number of elements of list returned
+// by different routes.
 func (e *Exporter) FetchWallixMetrics(
 	ch chan<- prometheus.Metric, client *http.Client,
 ) (err error) {

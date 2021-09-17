@@ -17,16 +17,12 @@ func main() {
 		log.Fatal("cannot load config:", err)
 	}
 
-	// Test
-	// fmt.Println(viper.GetString("listen-address"))
-	// fmt.Println(config.WallixUsername)
-	// fmt.Println(config.SkipVerify)
-
 	wallixExporter := exporter.NewExporter(cfg)
 	prometheus.MustRegister(wallixExporter)
 
 	http.Handle(cfg.TelemetryPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		// Allows to redirect from root to metric path
 		http.Redirect(w, req, cfg.TelemetryPath, http.StatusPermanentRedirect)
 	})
 	log.Fatal(http.ListenAndServe(cfg.ListenAddress, nil))

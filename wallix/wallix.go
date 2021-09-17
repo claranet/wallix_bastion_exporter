@@ -9,9 +9,11 @@ import (
 )
 
 const (
+	// Format expected by Wallix API on some resources like "sessions".
 	TimeFormat = "2006-01-02 15:04:05"
 )
 
+// To pass credentials information to first request which login to API.
 type BasicAuth struct {
 	Username string
 	Password string
@@ -63,6 +65,7 @@ func DoRequest(
 	return results, res.Header, nil
 }
 
+// Get users from /users API.
 func GetUsers(client *http.Client, url string) (users []map[string]interface{}, err error) {
 	users, _, err = DoRequest(
 		client,
@@ -78,6 +81,7 @@ func GetUsers(client *http.Client, url string) (users []map[string]interface{}, 
 	return users, err
 }
 
+// Get groups from /usergroups API.
 func GetGroups(client *http.Client, url string) (groups []map[string]interface{}, err error) {
 	groups, _, err = DoRequest(
 		client,
@@ -93,6 +97,7 @@ func GetGroups(client *http.Client, url string) (groups []map[string]interface{}
 	return groups, err
 }
 
+// Get devices from /devices API.
 func GetDevices(client *http.Client, url string) (devices []map[string]interface{}, err error) {
 	devices, _, err = DoRequest(
 		client,
@@ -108,6 +113,7 @@ func GetDevices(client *http.Client, url string) (devices []map[string]interface
 	return devices, err
 }
 
+// Get closed sesions for last sessionsClosedMinutes minutes.
 func GetClosedSessions(
 	client *http.Client, url string, sessionsClosedMinutes int,
 ) (sessionsClosed []map[string]interface{}, err error) {
@@ -132,6 +138,8 @@ func GetClosedSessions(
 	return sessionsClosed, err
 }
 
+// Get current active sesions from /sessions API.
+
 func GetCurrentSessions(client *http.Client, url string) (sessionsCurrent []map[string]interface{}, err error) {
 	sessionsCurrent, _, err = DoRequest(
 		client,
@@ -148,6 +156,7 @@ func GetCurrentSessions(client *http.Client, url string) (sessionsCurrent []map[
 	return sessionsCurrent, err
 }
 
+// Get targets depdening on type from /targets API.
 func GetTargets(client *http.Client, url string, targetType string) (targets []map[string]interface{}, err error) {
 	targets, _, err = DoRequest(
 		client,
