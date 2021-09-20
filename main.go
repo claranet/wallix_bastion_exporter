@@ -19,6 +19,7 @@ func main() {
 
 	wallixExporter := exporter.NewExporter(cfg)
 	prometheus.MustRegister(wallixExporter)
+	log.Printf("Started %s exporter listening on %s%s\n", exporter.Namespace, cfg.ListenAddress, cfg.TelemetryPath)
 
 	http.Handle(cfg.TelemetryPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {

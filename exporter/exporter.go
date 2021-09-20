@@ -14,38 +14,38 @@ import (
 const (
 	// ony used for metrics based on past timeframe like the closed sessions.
 	sessionsClosedMinutes = 5 // TODO expose as config parameter?
-	// prometheus exporter namespace.
-	namespace = "wallix_bastion"
+	// prometheus exporter Namespace.
+	Namespace = "wallix_bastion"
 )
 
 var (
 	metricUp = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "up"),
+		prometheus.BuildFQName(Namespace, "", "up"),
 		"Was the last scrape of Wallix Bastion API successful.",
 		nil, nil,
 	)
 	metricUsers = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "users"),
+		prometheus.BuildFQName(Namespace, "", "users"),
 		"Current number of users.",
 		nil, nil,
 	)
 	metricGroups = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "groups"),
+		prometheus.BuildFQName(Namespace, "", "groups"),
 		"Current number of groups.",
 		nil, nil,
 	)
 	metricDevices = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "devices"),
+		prometheus.BuildFQName(Namespace, "", "devices"),
 		"Current number of devices.",
 		nil, nil,
 	)
 	metricSessions = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "sessions"),
+		prometheus.BuildFQName(Namespace, "", "sessions"),
 		fmt.Sprintf("Number of sessions for the last %dm.", sessionsClosedMinutes),
 		[]string{"status"}, nil,
 	)
 	metricTargets = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "targets"),
+		prometheus.BuildFQName(Namespace, "", "targets"),
 		"Current number of targets.",
 		[]string{"type"}, nil,
 	)
@@ -75,7 +75,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		SkipVerify: e.Config.SkipVerify,
 		Timeout:    e.Config.Timeout,
 		Headers: map[string]string{
-			"User-Agent": "prometheus_exporter_" + namespace,
+			"User-Agent": "prometheus_exporter_" + Namespace,
 		},
 		// Using a cookie speed up metrics fetch by avoiding basic auth on every requests
 		CookieManager: true,
