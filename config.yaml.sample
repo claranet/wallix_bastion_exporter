@@ -1,0 +1,7 @@
+listen-address: ":9191"
+scrape-uri: "https://127.0.0.1/api"
+skip-verify: false
+telemetry-path: "/metrics"
+timeout: 10
+wallix-username: 'you can use "--wallix-username" flag for convenience'
+wallix-password: 'you can use "WALLIX_PASSWORD" env var for safety'
