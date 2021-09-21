@@ -6,6 +6,8 @@
 [![CodeQL](https://img.shields.io/github/workflow/status/claranet/wallix_bastion_exporter/codeql-analysis?style=flat-square&label=security)](https://github.com/claranet/wallix_bastion_exporter/actions/workflows/analyze.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/claranet/wallix_bastion_exporter?style=flat-square)](https://goreportcard.com/report/github.com/claranet/wallix_bastion_exporter)
 [![Code Climate](https://img.shields.io/codeclimate/maintainability/claranet/wallix_bastion_exporter?style=flat-square)](https://codeclimate.com/github/claranet/wallix_bastion_exporter)
+[![Go mod version](https://img.shields.io/github/go-mod/go-version/claranet/wallix_bastion_exporter?style=flat-square)](https://golang.org/)
+[![Godoc](https://img.shields.io/badge/godoc-reference-5272B4.svg?style=flat-square)](https://pkg.go.dev/github.com/claranet/wallix_bastion_exporter)
 
 This is a simple server that scrapes Wallix Bastion stats and exports them via HTTP for Prometheus consumption.
 
@@ -82,9 +84,9 @@ See [Configuration](#configuration) section below for more information about how
 ## Configuration
 
 Configuration can be done, in precendence order, using:
-- flags
-- environment variables
-- yaml configuration file
+1. flags
+1. environment variables
+1. yaml configuration file
 
 For the last, you can copy [config.yaml.sample](config.yaml.sample) next to the exporter binary and modify depending on your setup.
 
