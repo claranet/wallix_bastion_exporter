@@ -27,6 +27,8 @@ Help on flags:
 ./wallix_bastion_exporter --help
 ```
 
+Check the [examples](examples) directory for common installations like Systemd or Opentelemetry Collector.
+
 ## Usage
 
 First of all, it requires an available user on the target Wallix bastion with full read only permissions. Here is an example of the Terraform configuration:

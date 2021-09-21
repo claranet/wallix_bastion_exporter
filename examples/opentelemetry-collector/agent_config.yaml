@@ -1,0 +1,56 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  hostmetrics:
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      disk:
+      filesystem:
+      memory:
+      network:
+      paging:
+      processes:
+  prometheus_exec/wallix:
+    exec: /etc/otel/collector/scripts/wallix/wallix_bastion_exporter --listen-address "127.0.0.1:{{port}}" --scrape-uri https://127.0.0.1/api --skip-verify
+    port: 9191
+    scrape_interval: 300s
+    env:
+      - name: WALLIX_USERNAME
+        value: foo
+      - name: WALLIX_PASSWORD
+        value: bar
+
+processors:
+  batch:
+  resource/add_global_dimensions:
+    attributes:
+      - action: upsert
+        key: sfx_monitored
+        value: true
+      - action: upsert
+        key: environment
+        value: ${ENV}
+  filter/wallix:
+    metrics:
+      include:
+        match_type: regexp
+        metric_names:
+          - wallix_bastion.*
+
+exporters:
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      processors: [batch, resource/add_global_dimensions, filter/hostmetrics]
+      exporters: [logging]
+    metrics/wallix:
+      receivers: [prometheus_exec/wallix]
+      processors: [batch, resource/add_global_dimensions, filter/wallix]
+      exporters: [signalfx]

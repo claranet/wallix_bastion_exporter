@@ -1,0 +1,12 @@
+[Unit]
+Description=Wallix Bastion Exporter
+
+[Service]
+User=wallix_bastion_exporter
+Group=wallix_bastion_exporter
+Type=simple
+EnvironmentFile=-/etc/default/wallix_bastion_exporter.env
+ExecStart=/usr/local/bin/wallix_bastion_exporter
+
+[Install]
+WantedBy=multi-user.target
