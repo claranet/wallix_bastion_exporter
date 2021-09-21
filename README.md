@@ -1,4 +1,11 @@
 # Wallix Bastion exporter for Prometheus
+[![Maintainer](https://img.shields.io/badge/maintained%20by-claranet-red?style=flat-square)](https://www.claranet.fr/)
+[![License](https://img.shields.io/github/license/claranet/wallix_bastion_exporter?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/claranet/wallix_bastion_exporter?style=flat-square)](https://github.com/claranet/wallix_bastion_exporter/releases)
+[![Lint](https://img.shields.io/github/workflow/status/claranet/wallix_bastion_exporter/golangci-lint?style=flat-square&label=lint)](https://github.com/claranet/wallix_bastion_exporter/actions/workflows/lint.yml)
+[![CodeQL](https://img.shields.io/github/workflow/status/claranet/wallix_bastion_exporter/codeql-analysis?style=flat-square&label=security)](https://github.com/claranet/wallix_bastion_exporter/actions/workflows/analyze.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/claranet/wallix_bastion_exporter?style=flat-square)](https://goreportcard.com/report/github.com/claranet/wallix_bastion_exporter)
+[![Code Climate](https://img.shields.io/codeclimate/maintainability/claranet/wallix_bastion_exporter?style=flat-square)](https://codeclimate.com/github/claranet/wallix_bastion_exporter)
 
 This is a simple server that scrapes Wallix Bastion stats and exports them via HTTP for Prometheus consumption.
 
