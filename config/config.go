@@ -73,12 +73,12 @@ func SetFlags() (err error) {
 	helpFlag := pflag.BoolP("help", "h", false, "help message")
 	pflag.String("listen-address", ":9191", "Address to listen on for web interface and telemetry")
 	pflag.String("telemetry-path", "/metrics", "Path under which to expose metrics")
-	pflag.StringP("scrape-uri", "w", "https://127.0.0.1/api", "Path under which to expose metrics")
+	pflag.StringP("scrape-uri", "w", "https://127.0.0.1/api", "URI on which to scrape Wallix Bastion API")
 	pflag.StringP("wallix-username", "u", "", "The username used for authentication to request Wallix Bastion API")
 	pflag.StringP("wallix-password", "p", "", "The password used for authentication to request Wallix Bastion API")
 
 	pflag.BoolP("skip-verify", "s", false, "Flag that disables TLS certificate verification for the scrape URI")
-	pflag.IntP("timeout", "t", defaultTimeout, "Timeout for trying to get stats from Wallix Bastion")
+	pflag.IntP("timeout", "t", defaultTimeout, "Timeout in seconds for requests to Wallix Bastion API")
 	pflag.Parse()
 
 	// Bind to viper all other flags
