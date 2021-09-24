@@ -128,11 +128,11 @@ Below could cause undesired load on the server. Above will desynchronize closed 
 
 | Metric | Labels | Note |
 |---|---|---|
-| `wallix_bastion_up` | | `0` if the exporter cannot authenticate to Wallix API, `1` if request is successful |
-| `wallix_bastion_users` | | Total number of local users as gauge |
-| `wallix_bastion_groups` | | Total number of user groups as gauge |
+| `wallix_bastion_up` | | `0` if the exporter cannot authenticate to Wallix API, `1` if request is successful |
+| `wallix_bastion_users` | | Total number of local users as gauge |
+| `wallix_bastion_groups` | | Total number of user groups as gauge |
 | `wallix_bastion_devices` | | Total number of devices as gauge |
-| `wallix_bastion_targets` | `type` | Number of targets per `type` |
+| `wallix_bastion_targets` | `type` | Number of targets per `type` |
 | `wallix_bastion_sessions` | `status` | Number of sessions per `status`. `closed` status count is done __over the last `5m` independently of the scrape interval__ |
 
 ## Development
