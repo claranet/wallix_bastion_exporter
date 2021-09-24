@@ -82,21 +82,21 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	client, err := httpConfig.Build()
 	if err != nil {
-		log.Println(err)
+		log.Println(fmt.Errorf("init exporter failed: %w", err))
 
 		return
 	}
 
 	err = e.AuthenticateWallixAPI(ch, client)
 	if err != nil {
-		log.Println(err)
+		log.Println(fmt.Errorf("determine up metric failed: %w", err))
 
 		return
 	}
 
 	err = e.FetchWallixMetrics(ch, client)
 	if err != nil {
-		log.Println(err)
+		log.Println(fmt.Errorf("fetch wallix metrics failed: %w", err))
 
 		return
 	}
@@ -123,7 +123,7 @@ func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *ht
 			metricUp, prometheus.GaugeValue, 0,
 		)
 
-		return err
+		return fmt.Errorf("wallix authentication failed: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -141,7 +141,7 @@ func (e *Exporter) FetchWallixMetrics(
 ) (err error) {
 	users, err := wallix.GetUsers(client, e.Config.ScrapeURI)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get users: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricUsers, prometheus.GaugeValue, float64(len(users)),
@@ -149,7 +149,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	groups, err := wallix.GetGroups(client, e.Config.ScrapeURI)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get groups: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricGroups, prometheus.GaugeValue, float64(len(groups)),
@@ -157,7 +157,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	devices, err := wallix.GetDevices(client, e.Config.ScrapeURI)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get devices: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricDevices, prometheus.GaugeValue, float64(len(devices)),
@@ -165,7 +165,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	sessionsClosed, err := wallix.GetClosedSessions(client, e.Config.ScrapeURI, sessionsClosedMinutes)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get closed sessions: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricSessions, prometheus.GaugeValue, float64(len(sessionsClosed)), "closed",
@@ -173,7 +173,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	sessionsCurrent, err := wallix.GetCurrentSessions(client, e.Config.ScrapeURI)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get current sessions: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricSessions, prometheus.GaugeValue, float64(len(sessionsCurrent)), "current",
@@ -187,7 +187,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	targetsSessionAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_accounts")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get session accounts targets: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionAccounts)), "session_accounts",
@@ -195,7 +195,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	targetsSessionAccountMappings, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_account_mappings")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get session account mappings targets: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionAccountMappings)), "session_account_mappings",
@@ -203,7 +203,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	targetsSessionInteractiveLogins, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_interactive_logins")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get session interactive logins targets: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionInteractiveLogins)), "session_interactive_logins",
@@ -211,7 +211,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	targetsSessionsScenarioAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_scenario_accounts")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get session scenario accounts targets: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionsScenarioAccounts)), "session_scenario_accounts",
@@ -219,7 +219,7 @@ func (e *Exporter) FetchWallixMetrics(
 
 	targetsPasswordRetrievalAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "password_retrieval_accounts")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get password retrieval accounts targets: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsPasswordRetrievalAccounts)), "password_retrieval_accounts",

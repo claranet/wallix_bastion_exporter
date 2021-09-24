@@ -19,6 +19,11 @@ type BasicAuth struct {
 	Password string
 }
 
+type APIError struct {
+	Error       string `json:"error"`
+	Description string `json:"description"`
+}
+
 // Asbtracts any requests to Wallix bastion API.
 func DoRequest(
 	client *http.Client, method string, uri string, params map[string]string, basicAuth *BasicAuth,
@@ -45,21 +50,28 @@ func DoRequest(
 		return nil, nil, fmt.Errorf("cannot do request to Wallix bastion %s: %w", uri, err)
 	}
 
-	if res.StatusCode != http.StatusOK {
-		if res.StatusCode == http.StatusNoContent {
-			return nil, res.Header, nil
-		}
-
-		return nil, nil, fmt.Errorf("Non-OK HTTP status: %d", res.StatusCode)
-	}
-
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
 
+	// Authentication successful, stop here
+	if res.StatusCode == http.StatusNoContent {
+		return nil, res.Header, nil
+	}
+
 	decoder := json.NewDecoder(res.Body)
+
+	if res.StatusCode != http.StatusOK {
+		responseError := APIError{}
+		if err := decoder.Decode(&responseError); err != nil {
+			return nil, nil, fmt.Errorf("response http status not ok: %d, cannot decode error response: %w", res.StatusCode, err)
+		}
+
+		return nil, nil, fmt.Errorf("response http status not ok: %d, error response: %v", res.StatusCode, responseError)
+	}
+
 	if err := decoder.Decode(&results); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cannot decode results response %w", err)
 	}
 
 	return results, res.Header, nil
