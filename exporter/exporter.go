@@ -21,7 +21,7 @@ const (
 var (
 	metricUp = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, "", "up"),
-		"Was the last scrape of Wallix Bastion API successful.",
+		"Was able to request and authenticate to Wallix Bastion API successfully.",
 		nil, nil,
 	)
 	metricUsers = prometheus.NewDesc(
