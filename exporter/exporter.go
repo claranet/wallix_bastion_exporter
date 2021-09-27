@@ -163,28 +163,6 @@ func (e *Exporter) FetchWallixMetrics(
 		metricDevices, prometheus.GaugeValue, float64(len(devices)),
 	)
 
-	sessionsClosed, err := wallix.GetClosedSessions(client, e.Config.ScrapeURI, sessionsClosedMinutes)
-	if err != nil {
-		return fmt.Errorf("cannot get closed sessions: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricSessions, prometheus.GaugeValue, float64(len(sessionsClosed)), "closed",
-	)
-
-	sessionsCurrent, err := wallix.GetCurrentSessions(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get current sessions: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricSessions, prometheus.GaugeValue, float64(len(sessionsCurrent)), "current",
-	)
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	sessions, prometheus.GaugeValue, float64(
-	// 		len(sessionsClosedResults)+len(sessionsCurrentResults),
-	// 	),
-	// )
-
 	targetsSessionAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_accounts")
 	if err != nil {
 		return fmt.Errorf("cannot get session accounts targets: %w", err)
@@ -224,6 +202,29 @@ func (e *Exporter) FetchWallixMetrics(
 	ch <- prometheus.MustNewConstMetric(
 		metricTargets, prometheus.GaugeValue, float64(len(targetsPasswordRetrievalAccounts)), "password_retrieval_accounts",
 	)
+
+	// Keep sessions relative metrics fetch to the end because it depends on a active wallix license
+	sessionsCurrent, err := wallix.GetCurrentSessions(client, e.Config.ScrapeURI)
+	if err != nil {
+		return fmt.Errorf("cannot get current sessions: %w", err)
+	}
+	ch <- prometheus.MustNewConstMetric(
+		metricSessions, prometheus.GaugeValue, float64(len(sessionsCurrent)), "current",
+	)
+
+	sessionsClosed, err := wallix.GetClosedSessions(client, e.Config.ScrapeURI, sessionsClosedMinutes)
+	if err != nil {
+		return fmt.Errorf("cannot get closed sessions: %w", err)
+	}
+	ch <- prometheus.MustNewConstMetric(
+		metricSessions, prometheus.GaugeValue, float64(len(sessionsClosed)), "closed",
+	)
+
+	// ch <- prometheus.MustNewConstMetric(
+	// 	sessions, prometheus.GaugeValue, float64(
+	// 		len(sessionsClosedResults)+len(sessionsCurrentResults),
+	// 	),
+	// )
 
 	return nil
 }
