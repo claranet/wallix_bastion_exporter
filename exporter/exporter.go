@@ -49,6 +49,16 @@ var (
 		"Current number of targets.",
 		[]string{"type"}, nil,
 	)
+	metricEncryptionStatus = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, "", "encryption_status"),
+		"Encryption status (need_setup=0, ready=1, need_passphrase=2).",
+		[]string{"status", "security_level"}, nil,
+	)
+	metricEncryptionSecurityLevel = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, "", "encryption_security_level"),
+		"Encryption security level (need_setup=0, passphrase_defined=1, passphrase_not_used=2, [hidden]=-1).",
+		[]string{"security_level", "status"}, nil,
+	)
 )
 
 type Exporter struct {
@@ -68,6 +78,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- metricDevices
 	ch <- metricSessions
 	ch <- metricTargets
+	ch <- metricEncryptionStatus
+	ch <- metricEncryptionSecurityLevel
 }
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
@@ -108,15 +120,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 // - retrieve the cookie to not have to authenticate subsequent requests
 // Notice it uses "POST" methode in contrast to all other requests.
 func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *http.Client) (err error) {
-	_, _, err = wallix.DoRequest(
+	err = wallix.Authenticate(
 		client,
-		http.MethodPost,
 		e.Config.ScrapeURI,
-		nil,
-		&wallix.BasicAuth{
-			Username: e.Config.WallixUsername,
-			Password: e.Config.WallixPassword,
-		},
+		e.Config.WallixUsername,
+		e.Config.WallixPassword,
 	)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(
@@ -225,6 +233,33 @@ func (e *Exporter) FetchWallixMetrics(
 	// 		len(sessionsClosedResults)+len(sessionsCurrentResults),
 	// 	),
 	// )
+
+	encryptionMap := map[string]int{
+		"ready":               1,
+		"need_setup":          0,
+		"need_passphrase":     2, // nolint:gomnd
+		"passphrase_not_used": 2, // nolint:gomnd
+		"passphrase_defined":  1,
+		"[hidden]":            -1,
+	}
+	encryptionInfo, err := wallix.GetEncryption(client, e.Config.ScrapeURI)
+	if err != nil {
+		return fmt.Errorf("cannot get encryption information: %w", err)
+	}
+	encryptionStatus := encryptionInfo["encryption"].(string)            // nolint:forcetypeassert
+	encryptionSecurityLevel := encryptionInfo["security_level"].(string) // nolint:forcetypeassert
+	ch <- prometheus.MustNewConstMetric(
+		metricEncryptionStatus,
+		prometheus.GaugeValue,
+		float64(encryptionMap[encryptionStatus]),
+		encryptionStatus, encryptionSecurityLevel,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		metricEncryptionSecurityLevel,
+		prometheus.GaugeValue,
+		float64(encryptionMap[encryptionSecurityLevel]),
+		encryptionSecurityLevel, encryptionStatus,
+	)
 
 	return nil
 }

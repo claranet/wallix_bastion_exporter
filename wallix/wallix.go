@@ -1,9 +1,11 @@
 package wallix
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -24,13 +26,13 @@ type APIError struct {
 	Description string `json:"description"`
 }
 
-// Asbtracts any requests to Wallix bastion API.
-func DoRequest(
-	client *http.Client, method string, uri string, params map[string]string, basicAuth *BasicAuth,
-) (results []map[string]interface{}, headers http.Header, err error) {
-	req, err := http.NewRequestWithContext(context.Background(), method, uri, nil)
+// Wraps any requests to Wallix bastion API.
+func doRequest(
+	client *http.Client, method string, url string, params map[string]string, basicAuth *BasicAuth,
+) (body []byte, err error) {
+	req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot create request to Wallix bastion %s: %w", uri, err)
+		return nil, fmt.Errorf("cannot create request to Wallix bastion %s: %w", url, err)
 	}
 
 	if params != nil {
@@ -47,47 +49,103 @@ func DoRequest(
 
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot do request to Wallix bastion %s: %w", uri, err)
+		return nil, fmt.Errorf("cannot do request to Wallix bastion %s: %w", url, err)
 	}
 
 	if res.Body != nil {
 		defer res.Body.Close()
+		body, _ = ioutil.ReadAll(res.Body)
 	}
 
 	// Authentication successful, stop here
 	if res.StatusCode == http.StatusNoContent {
-		return nil, res.Header, nil
+		return body, nil
 	}
-
-	decoder := json.NewDecoder(res.Body)
 
 	if res.StatusCode != http.StatusOK {
+		statusError := fmt.Errorf("response http status not ok: %d", res.StatusCode)
 		responseError := APIError{}
-		if err := decoder.Decode(&responseError); err != nil {
-			return nil, nil, fmt.Errorf("response http status not ok: %d, cannot decode error response: %w", res.StatusCode, err)
+		if json.NewDecoder(res.Body).Decode(&responseError) == nil {
+			return body, fmt.Errorf("%w, api error response: %v", statusError, responseError)
 		}
 
-		return nil, nil, fmt.Errorf("response http status not ok: %d, error response: %v", res.StatusCode, responseError)
+		return body, fmt.Errorf("%w, plain text response: %s", statusError, string(body))
 	}
 
+	return body, nil
+}
+
+func QuerySchemes(
+	client *http.Client, url string, params map[string]string,
+) (results []map[string]interface{}, err error) {
+	body, err := doRequest(
+		client,
+		http.MethodGet,
+		url,
+		params,
+		nil,
+	)
+	if err != nil {
+		return
+	}
+	reader := bytes.NewReader(body)
+	decoder := json.NewDecoder(reader)
 	if err := decoder.Decode(&results); err != nil {
-		return nil, nil, fmt.Errorf("cannot decode results response %w", err)
+		return nil, fmt.Errorf("cannot decode response as json list %w: %s", err, string(body))
 	}
 
-	return results, res.Header, nil
+	return
+}
+
+func QueryScheme(
+	client *http.Client, url string, params map[string]string,
+) (result map[string]interface{}, err error) {
+	body, err := doRequest(
+		client,
+		http.MethodGet,
+		url,
+		params,
+		nil,
+	)
+	if err != nil {
+		return
+	}
+	reader := bytes.NewReader(body)
+	decoder := json.NewDecoder(reader)
+	if err := decoder.Decode(&result); err != nil {
+		return nil, fmt.Errorf("cannot decode response as json object %w: %s", err, string(body))
+	}
+
+	return
+}
+
+// Authenticate on Wallix API to test or/and get cookie.
+func Authenticate(
+	client *http.Client, url string, user string, password string,
+) (err error) {
+	_, err = doRequest(
+		client,
+		http.MethodPost,
+		url,
+		nil,
+		&BasicAuth{
+			Username: user,
+			Password: password,
+		},
+	)
+
+	return
 }
 
 // Get users from /users API.
 func GetUsers(client *http.Client, url string) (users []map[string]interface{}, err error) {
-	users, _, err = DoRequest(
+	users, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/users",
 		map[string]string{
 			"limit":  "-1",
 			"fields": "user_name",
 		},
-		nil,
 	)
 
 	return users, err
@@ -95,15 +153,13 @@ func GetUsers(client *http.Client, url string) (users []map[string]interface{}, 
 
 // Get groups from /usergroups API.
 func GetGroups(client *http.Client, url string) (groups []map[string]interface{}, err error) {
-	groups, _, err = DoRequest(
+	groups, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/usergroups",
 		map[string]string{
 			"limit":  "-1",
 			"fields": "id",
 		},
-		nil,
 	)
 
 	return groups, err
@@ -111,21 +167,19 @@ func GetGroups(client *http.Client, url string) (groups []map[string]interface{}
 
 // Get devices from /devices API.
 func GetDevices(client *http.Client, url string) (devices []map[string]interface{}, err error) {
-	devices, _, err = DoRequest(
+	devices, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/devices",
 		map[string]string{
 			"limit":  "-1",
 			"fields": "id",
 		},
-		nil,
 	)
 
 	return devices, err
 }
 
-// Get closed sesions for last sessionsClosedMinutes minutes.
+// Get closed sessions for last sessionsClosedMinutes minutes.
 func GetClosedSessions(
 	client *http.Client, url string, sessionsClosedMinutes int,
 ) (sessionsClosed []map[string]interface{}, err error) {
@@ -133,9 +187,8 @@ func GetClosedSessions(
 		-time.Minute * time.Duration(sessionsClosedMinutes),
 	).Format(TimeFormat)
 
-	sessionsClosed, _, err = DoRequest(
+	sessionsClosed, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/sessions",
 		map[string]string{
 			"limit":      "-1",
@@ -144,25 +197,22 @@ func GetClosedSessions(
 			"status":     "closed",
 			"from_date":  fromDate,
 		},
-		nil,
 	)
 
 	return sessionsClosed, err
 }
 
-// Get current active sesions from /sessions API.
+// Get current active sessions from /sessions API.
 
 func GetCurrentSessions(client *http.Client, url string) (sessionsCurrent []map[string]interface{}, err error) {
-	sessionsCurrent, _, err = DoRequest(
+	sessionsCurrent, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/sessions",
 		map[string]string{
 			"limit":  "-1",
 			"fields": "id",
 			"status": "current",
 		},
-		nil,
 	)
 
 	return sessionsCurrent, err
@@ -170,16 +220,25 @@ func GetCurrentSessions(client *http.Client, url string) (sessionsCurrent []map[
 
 // Get targets depdening on type from /targets API.
 func GetTargets(client *http.Client, url string, targetType string) (targets []map[string]interface{}, err error) {
-	targets, _, err = DoRequest(
+	targets, err = QuerySchemes(
 		client,
-		http.MethodGet,
 		url+"/targets/"+targetType,
 		map[string]string{
 			"limit":  "-1",
 			"fields": "id",
 		},
-		nil,
 	)
 
 	return targets, err
+}
+
+// Get encryption information from /encryption API.
+func GetEncryption(client *http.Client, url string) (encryption map[string]interface{}, err error) {
+	encryption, err = QueryScheme(
+		client,
+		url+"/encryption",
+		nil,
+	)
+
+	return encryption, err
 }

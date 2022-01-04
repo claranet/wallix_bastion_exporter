@@ -134,6 +134,8 @@ Below could cause undesired load on the server. Above will desynchronize closed 
 | `wallix_bastion_devices` | | Total number of devices as gauge |
 | `wallix_bastion_targets` | `type` | Number of targets per `type` |
 | `wallix_bastion_sessions` | `status` | Number of sessions per `status`. `closed` status count is done __over the last `5m` independently of the scrape interval__ |
+| `wallix_bastion_encryption_status` | `status`,`security_level` | Encryption status (need_setup=0, ready=1, need_passphrase=2) |
+| `wallix_bastion_encryption_security_level` | `security_level`,`status` | Encryption security level (need_setup=0, passphrase_defined=1, passphrase_not_used=2, [hidden]=-1) |
 
 ## Development
 
