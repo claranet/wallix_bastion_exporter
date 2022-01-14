@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/claranet/wallix_bastion_exporter/config"
 	"github.com/claranet/wallix_bastion_exporter/httpclient"
@@ -111,18 +112,18 @@ func NewExporter(config config.Config) *Exporter {
 	}
 }
 
-func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	ch <- metricUp
-	ch <- metricUsers
-	ch <- metricGroups
-	ch <- metricDevices
-	ch <- metricSessions
-	ch <- metricTargets
-	ch <- metricEncryptionStatus
-	ch <- metricEncryptionSecurityLevel
+func (e *Exporter) Describe(metricsChannel chan<- *prometheus.Desc) {
+	metricsChannel <- metricUp
+	metricsChannel <- metricUsers
+	metricsChannel <- metricGroups
+	metricsChannel <- metricDevices
+	metricsChannel <- metricSessions
+	metricsChannel <- metricTargets
+	metricsChannel <- metricEncryptionStatus
+	metricsChannel <- metricEncryptionSecurityLevel
 }
 
-func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+func (e *Exporter) Collect(metricsChannel chan<- prometheus.Metric) {
 	httpConfig := httpclient.HTTPConfig{
 		SkipVerify: e.Config.SkipVerify,
 		Timeout:    e.Config.Timeout,
@@ -139,19 +140,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	err = e.AuthenticateWallixAPI(ch, client)
+	err = e.AuthenticateWallixAPI(metricsChannel, client)
 	if err != nil {
 		log.Println(fmt.Errorf("determine up metric failed: %w", err))
 
 		return
 	}
 
-	err = e.FetchWallixMetrics(ch, client)
-	if err != nil {
-		log.Println(fmt.Errorf("fetch wallix metrics failed: %w", err))
-
-		return
-	}
+	e.FetchWallixMetrics(metricsChannel, client)
 }
 
 // The first request done to wallix API. It allows to:
@@ -159,7 +155,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 // - prevent trying to fetch other metrics if down
 // - retrieve the cookie to not have to authenticate subsequent requests
 // Notice it uses "POST" methode in contrast to all other requests.
-func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *http.Client) (err error) {
+func (e *Exporter) AuthenticateWallixAPI(metricsChannel chan<- prometheus.Metric, client *http.Client) (err error) {
 	err = wallix.Authenticate(
 		client,
 		e.Config.ScrapeURI,
@@ -167,14 +163,14 @@ func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *ht
 		e.Config.WallixPassword,
 	)
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(
+		metricsChannel <- prometheus.MustNewConstMetric(
 			metricUp, prometheus.GaugeValue, 0,
 		)
 
 		return fmt.Errorf("wallix authentication failed: %w", err)
 	}
 
-	ch <- prometheus.MustNewConstMetric(
+	metricsChannel <- prometheus.MustNewConstMetric(
 		metricUp, prometheus.GaugeValue, 1,
 	)
 
@@ -185,217 +181,32 @@ func (e *Exporter) AuthenticateWallixAPI(ch chan<- prometheus.Metric, client *ht
 // by counting the number of elements of list returned
 // by different routes.
 func (e *Exporter) FetchWallixMetrics(
-	ch chan<- prometheus.Metric, client *http.Client,
-) (err error) {
-	users, err := wallix.GetUsers(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get users: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricUsers, prometheus.GaugeValue, float64(len(users)),
-	)
+	metricsChannel chan<- prometheus.Metric, client *http.Client,
+) {
+	var wg sync.WaitGroup
 
-	groups, err := wallix.GetGroups(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get groups: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricGroups, prometheus.GaugeValue, float64(len(groups)),
-	)
+	wg.Add(1)
+	go e.gatherMetricsUsers(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsGroups(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsDevices(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsTargetsSessionAccounts(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsTargetsSessionAccountMappings(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsTargetsSessionInteractiveLogins(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsTargetsSessionScenarioAccounts(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsTargetsPasswordRetrievalAccounts(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsEncryption(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsLicense(&wg, metricsChannel, client)
+	wg.Add(1)
+	go e.gatherMetricsSessions(&wg, metricsChannel, client)
 
-	devices, err := wallix.GetDevices(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get devices: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricDevices, prometheus.GaugeValue, float64(len(devices)),
-	)
-
-	targetsSessionAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_accounts")
-	if err != nil {
-		return fmt.Errorf("cannot get session accounts targets: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionAccounts)), "session_accounts",
-	)
-
-	targetsSessionAccountMappings, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_account_mappings")
-	if err != nil {
-		return fmt.Errorf("cannot get session account mappings targets: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionAccountMappings)), "session_account_mappings",
-	)
-
-	targetsSessionInteractiveLogins, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_interactive_logins")
-	if err != nil {
-		return fmt.Errorf("cannot get session interactive logins targets: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionInteractiveLogins)), "session_interactive_logins",
-	)
-
-	targetsSessionsScenarioAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "session_scenario_accounts")
-	if err != nil {
-		return fmt.Errorf("cannot get session scenario accounts targets: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricTargets, prometheus.GaugeValue, float64(len(targetsSessionsScenarioAccounts)), "session_scenario_accounts",
-	)
-
-	targetsPasswordRetrievalAccounts, err := wallix.GetTargets(client, e.Config.ScrapeURI, "password_retrieval_accounts")
-	if err != nil {
-		return fmt.Errorf("cannot get password retrieval accounts targets: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricTargets, prometheus.GaugeValue, float64(len(targetsPasswordRetrievalAccounts)), "password_retrieval_accounts",
-	)
-
-	encryptionMap := map[string]int{
-		"ready":               1,
-		"need_setup":          0,
-		"need_passphrase":     2, // nolint:gomnd
-		"passphrase_not_used": 2, // nolint:gomnd
-		"passphrase_defined":  1,
-		"[hidden]":            -1,
-	}
-	encryptionInfo, err := wallix.GetEncryption(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get encryption information: %w", err)
-	}
-	encryptionStatus, ok := encryptionInfo["encryption"].(string)
-	if ok {
-		encryptionSecurityLevel, ok := encryptionInfo["security_level"].(string)
-		if ok {
-			ch <- prometheus.MustNewConstMetric(
-				metricEncryptionStatus,
-				prometheus.GaugeValue,
-				float64(encryptionMap[encryptionStatus]),
-				encryptionStatus, encryptionSecurityLevel,
-			)
-			ch <- prometheus.MustNewConstMetric(
-				metricEncryptionSecurityLevel,
-				prometheus.GaugeValue,
-				float64(encryptionMap[encryptionSecurityLevel]),
-				encryptionSecurityLevel, encryptionStatus,
-			)
-		}
-	}
-
-	licenseInfo, err := wallix.GetLicense(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get license information: %w", err)
-	}
-	licenseIsExpired, ok := licenseInfo["is_expired"].(bool)
-	if ok {
-		var licenseIsExpiredGauge int8
-		if licenseIsExpired {
-			licenseIsExpiredGauge = 1
-		}
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseIsExpired, prometheus.GaugeValue, float64(licenseIsExpiredGauge),
-		)
-	}
-	licensePrimary, ok := licenseInfo["primary"].(float64)
-	if !ok {
-		licensePrimary = 0
-	}
-	licensePrimaryMax, ok := licenseInfo["primary_max"].(float64)
-	if ok {
-		licensePrimaryPct := licensePrimary / licensePrimaryMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicensePrimaryPct, prometheus.GaugeValue, licensePrimaryPct,
-		)
-	}
-	licenseSecondary, ok := licenseInfo["secondary"].(float64)
-	if !ok {
-		licenseSecondary = 0
-	}
-	licenseSecondaryMax, ok := licenseInfo["secondary_max"].(float64)
-	if ok {
-		licenseSecondaryPct := licenseSecondary / licenseSecondaryMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseSecondaryPct, prometheus.GaugeValue, licenseSecondaryPct,
-		)
-	}
-	licenseNamedUser, ok := licenseInfo["named_user"].(float64)
-	if !ok {
-		licenseNamedUser = 0
-	}
-	licenseNamedUserMax, ok := licenseInfo["named_user_max"].(float64)
-	if ok {
-		licenseNamedUserPct := licenseNamedUser / licenseNamedUserMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseNameUserPct, prometheus.GaugeValue, licenseNamedUserPct,
-		)
-	}
-	licenseResource, ok := licenseInfo["resource"].(float64)
-	if !ok {
-		licenseResource = 0
-	}
-	licenseResourceMax, ok := licenseInfo["resource_max"].(float64)
-	if ok {
-		licenseResourcePct := licenseResource / licenseResourceMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseResourcePct, prometheus.GaugeValue, licenseResourcePct,
-		)
-	}
-	licenseWaapm, ok := licenseInfo["waapm"].(float64)
-	if !ok {
-		licenseWaapm = 0
-	}
-	licenseWaapmMax, ok := licenseInfo["waapm_max"].(float64)
-	if ok {
-		licenseWaapmPct := licenseWaapm / licenseWaapmMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseWaapmPct, prometheus.GaugeValue, licenseWaapmPct,
-		)
-	}
-	licensePmTarget, ok := licenseInfo["pm_target"].(float64)
-	if !ok {
-		licensePmTarget = 0
-	}
-	licensePmTargetMax, ok := licenseInfo["pm_target_max"].(float64)
-	if ok {
-		licensePmTargetPct := licensePmTarget / licensePmTargetMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicensePmTargetPct, prometheus.GaugeValue, licensePmTargetPct,
-		)
-	}
-	licenseSmTarget, ok := licenseInfo["sm_target"].(float64)
-	if !ok {
-		licenseSmTarget = 0
-	}
-	licenseSmTargetMax, ok := licenseInfo["sm_target_max"].(float64)
-	if ok {
-		licenseSmTargetPct := licenseSmTarget / licenseSmTargetMax
-		ch <- prometheus.MustNewConstMetric(
-			metricLicenseSmTargetPct, prometheus.GaugeValue, licenseSmTargetPct,
-		)
-	}
-
-	// /!\ Keep sessions relative metrics fetch to the end because it depends on a active wallix license
-	sessionsCurrent, err := wallix.GetCurrentSessions(client, e.Config.ScrapeURI)
-	if err != nil {
-		return fmt.Errorf("cannot get current sessions: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricSessions, prometheus.GaugeValue, float64(len(sessionsCurrent)), "current",
-	)
-
-	sessionsClosed, err := wallix.GetClosedSessions(client, e.Config.ScrapeURI, sessionsClosedMinutes)
-	if err != nil {
-		return fmt.Errorf("cannot get closed sessions: %w", err)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		metricSessions, prometheus.GaugeValue, float64(len(sessionsClosed)), "closed",
-	)
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	sessions, prometheus.GaugeValue, float64(
-	// 		len(sessionsClosedResults)+len(sessionsCurrentResults),
-	// 	),
-	// )
-
-	return nil
+	wg.Wait()
 }
