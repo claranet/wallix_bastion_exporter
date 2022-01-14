@@ -242,3 +242,14 @@ func GetEncryption(client *http.Client, url string) (encryption map[string]inter
 
 	return encryption, err
 }
+
+// Get license information from /licenseInfo API.
+func GetLicense(client *http.Client, url string) (license map[string]interface{}, err error) {
+	license, err = QueryScheme(
+		client,
+		url+"/licenseinfo",
+		nil,
+	)
+
+	return license, err
+}

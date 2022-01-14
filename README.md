@@ -136,6 +136,14 @@ Below could cause undesired load on the server. Above will desynchronize closed 
 | `wallix_bastion_sessions` | `status` | Number of sessions per `status`. `closed` status count is done __over the last `5m` independently of the scrape interval__ |
 | `wallix_bastion_encryption_status` | `status`,`security_level` | Encryption status (need_setup=0, ready=1, need_passphrase=2) |
 | `wallix_bastion_encryption_security_level` | `security_level`,`status` | Encryption security level (need_setup=0, passphrase_defined=1, passphrase_not_used=2, [hidden]=-1) |
+| `wallix_bastion_license_is_expired` | | Is the Wallix is expired (0=false, 1=true) |
+| `wallix_bastion_license_primary_ratio` | | License usage percentage of primary |
+| `wallix_bastion_license_secondary_ratio` | | License usage percentage of secondary |
+| `wallix_bastion_license_named_user_ratio` | | License usage percentage of named user |
+| `wallix_bastion_license_resource_ratio` | | License usage percentage of resource |
+| `wallix_bastion_license_waapm_ratio` | | License usage percentage of waapm |
+| `wallix_bastion_license_sm_target_ratio` | | License usage percentage of sm target |
+| `wallix_bastion_license_pm_target_ratio` | | License usage percentage of pm target |
 
 ## Development
 
