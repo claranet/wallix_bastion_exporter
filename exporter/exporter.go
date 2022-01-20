@@ -91,12 +91,12 @@ var (
 		nil, nil,
 	)
 	metricLicensePmTargetPct = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, "", "license_sm_target_ratio"),
+		prometheus.BuildFQName(Namespace, "", "license_pm_target_ratio"),
 		"License usage percentage of pm target.",
 		nil, nil,
 	)
 	metricLicenseSmTargetPct = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, "", "license_pm_target_ratio"),
+		prometheus.BuildFQName(Namespace, "", "license_sm_target_ratio"),
 		"License usage percentage of sm target.",
 		nil, nil,
 	)
