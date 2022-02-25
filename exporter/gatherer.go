@@ -191,6 +191,15 @@ func (e *Exporter) gatherMetricsLicense(
 			metricLicenseIsExpired, prometheus.GaugeValue, float64(licenseIsExpiredGauge),
 		)
 	}
+	if licenseIsValid, ok := licenseInfo["is_valid"].(bool); ok {
+		var licenseIsExpiredGauge int8
+		if !licenseIsValid {
+			licenseIsExpiredGauge = 1
+		}
+		metricsChannel <- prometheus.MustNewConstMetric(
+			metricLicenseIsExpired, prometheus.GaugeValue, float64(licenseIsExpiredGauge),
+		)
+	}
 	licensePrimary, ok := licenseInfo["primary"].(float64) //nolint:varnamelen
 	if !ok {
 		licensePrimary = 0
